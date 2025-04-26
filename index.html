@@ -2,22 +2,96 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Code Editor</title>
-  <style>
-    body, html {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-    }
-    #editor-container {
-      width: 100%;
-      height: 100vh;
-    }
-  </style>
+  <title>VS Code-like Editor</title>
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.min.css">
 </head>
 <body>
-  <div id="editor-container"></div>
+  <div class="app-container">
+    <!-- Activity Bar (left sidebar with icons) -->
+    <div class="activity-bar">
+      <div class="activity-icon active" data-panel="explorer">
+        <i class="fas fa-file-alt"></i>
+      </div>
+      <div class="activity-icon" data-panel="search">
+        <i class="fas fa-search"></i>
+      </div>
+      <div class="activity-icon" data-panel="git">
+        <i class="fas fa-code-branch"></i>
+      </div>
+      <div class="activity-icon" data-panel="debug">
+        <i class="fas fa-bug"></i>
+      </div>
+      <div class="activity-icon" data-panel="extensions">
+        <i class="fas fa-puzzle-piece"></i>
+      </div>
+    </div>
+
+    <!-- Side Panel -->
+    <div class="side-panel">
+      <div class="panel-header">
+        <h3>EXPLORER</h3>
+      </div>
+      <div class="file-explorer">
+        <div class="folder-group">
+          <div class="folder-header">
+            <i class="fas fa-chevron-down"></i>
+            <span>PROJECT NAME</span>
+          </div>
+          <div class="file-list">
+            <div class="file active">
+              <i class="fas fa-file-code"></i>
+              <span>index.html</span>
+            </div>
+            <div class="file">
+              <i class="fas fa-file-code"></i>
+              <span>renderer.js</span>
+            </div>
+            <div class="file">
+              <i class="fas fa-file-code"></i>
+              <span>main.js</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+      <!-- Tabs -->
+      <div class="editor-tabs">
+        <div class="tab active">
+          <span>index.html</span>
+          <i class="fas fa-times"></i>
+        </div>
+        <div class="tab">
+          <span>renderer.js</span>
+          <i class="fas fa-times"></i>
+        </div>
+      </div>
+      
+      <!-- Editor Container -->
+      <div id="editor-container"></div>
+      
+      <!-- Status Bar -->
+      <div class="status-bar">
+        <div class="status-left">
+          <span class="git-info">main</span>
+          <span class="status-errors"><i class="fas fa-exclamation-circle"></i> 0 <i class="fas fa-warning"></i> 0</span>
+        </div>
+        <div class="status-right">
+          <span class="line-col">Ln 1, Col 1</span>
+          <span class="encoding">UTF-8</span>
+          <span class="language">JavaScript</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
   <script src="loader.js"></script>
+  <script src="components/sidebar.js"></script>
+  <script src="components/tabs.js"></script>
+  <script src="components/statusbar.js"></script>
+  <script src="renderer.js"></script>
 </body>
 </html>
