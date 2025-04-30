@@ -1,8 +1,11 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
+const fs = require('fs')
+
+let mainWindow;
 
 function createWindow() {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -26,4 +29,38 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit()
+})
+
+// Handle directory structure request
+ipcMain.on('request-directory-structure', (event) => {
+  // Get the current app directory
+  const appDirectory = path.dirname(app.getAppPath());
+  
+  // Read directory structure using our module
+  const directoryReader = require('./components/directory-reader');
+  const directoryStructure = directoryReader.readDirectory(appDirectory);
+  
+  // Send directory structure back to renderer
+  event.sender.send('directory-structure', directoryStructure);
+});
+
+// Handle file open request
+ipcMain.on('open-file', (event, fileInfo) => {
+  try {
+    const content = fs.readFileSync(fileInfo.path, 'utf8');
+    
+    // Send file content back to renderer
+    event.sender.send('file-content', {
+      name: fileInfo.name,
+      path: fileInfo.path,
+      content: content
+    });
+  } catch (error) {
+    console.error('Error reading file:', error);
+    event.sender.send('file-content-error', {
+      name: fileInfo.name,
+      path: fileInfo.path,
+      error: error.message
+    });
+  }
 })

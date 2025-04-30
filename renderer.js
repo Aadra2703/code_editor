@@ -1,4 +1,7 @@
 const monaco = require('monaco-editor');
+const electronRequire = window.require || require;
+const { ipcRenderer } = electronRequire('electron');
+const path = require('path');
 
 // Create Monaco Editor instance
 const editor = monaco.editor.create(document.getElementById('editor-container'), {
@@ -29,6 +32,70 @@ const files = {
 
 let currentFile = 'renderer.js';
 
+// Listen for file open events from the sidebar
+ipcRenderer.on('file-content', (event, fileData) => {
+  const { name, path: filePath, content } = fileData;
+  
+  // Add file to our cache
+  files[name] = content;
+  
+  // Find or create corresponding tab
+  let tab = null;
+  document.querySelectorAll('.tab span').forEach(span => {
+    if (span.textContent === name) {
+      tab = span.parentElement;
+    }
+  });
+  
+  if (!tab) {
+    // Create new tab if it doesn't exist
+    const tabsContainer = document.querySelector('.editor-tabs');
+    tab = document.createElement('div');
+    tab.className = 'tab';
+    tab.innerHTML = `<span>${name}</span><i class="fas fa-times"></i>`;
+    tabsContainer.appendChild(tab);
+    
+    // Add click event to new tab
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      if (files[name]) {
+        currentFile = name;
+        editor.setValue(files[name]);
+        
+        // Set language based on extension
+        setEditorLanguage(name);
+      }
+    });
+    
+    // Add close event to new tab
+    tab.querySelector('i').addEventListener('click', (e) => {
+      e.stopPropagation();
+      console.log('Close tab: ' + name);
+      tab.remove();
+      
+      // If this was the active tab, activate another one if available
+      if (tab.classList.contains('active')) {
+        const remainingTabs = document.querySelectorAll('.tab');
+        if (remainingTabs.length > 0) {
+          remainingTabs[0].click();
+        }
+      }
+    });
+  }
+  
+  // Activate tab
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  
+  // Set file content in editor
+  currentFile = name;
+  editor.setValue(content);
+  
+  // Set language based on extension
+  setEditorLanguage(name);
+});
+
 // Handle editor tab clicks
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -45,28 +112,7 @@ document.querySelectorAll('.tab').forEach(tab => {
       editor.setValue(files[fileName]);
       
       // Set language based on file extension
-      const extension = fileName.split('.').pop();
-      let language = 'text';
-      
-      switch(extension) {
-        case 'js':
-          language = 'javascript';
-          break;
-        case 'html':
-          language = 'html';
-          break;
-        case 'css':
-          language = 'css';
-          break;
-        case 'json':
-          language = 'json';
-          break;
-      }
-      
-      monaco.editor.setModelLanguage(editor.getModel(), language);
-      
-      // Update status bar
-      document.querySelector('.language').textContent = language.charAt(0).toUpperCase() + language.slice(1);
+      setEditorLanguage(fileName);
     }
   });
   
@@ -76,84 +122,56 @@ document.querySelectorAll('.tab').forEach(tab => {
     
     // In a real app, you'd handle saving changes here
     console.log('Close tab: ' + tab.querySelector('span').textContent);
+    tab.remove();
+    
+    // If this was the active tab, activate another one if available
+    if (tab.classList.contains('active')) {
+      const remainingTabs = document.querySelectorAll('.tab');
+      if (remainingTabs.length > 0) {
+        remainingTabs[0].click();
+      }
+    }
   });
 });
 
-// Handle file clicks in explorer
-document.querySelectorAll('.file').forEach(file => {
-  file.addEventListener('click', () => {
-    const fileName = file.querySelector('span').textContent;
-    
-    // Update file selection in explorer
-    document.querySelectorAll('.file').forEach(f => f.classList.remove('active'));
-    file.classList.add('active');
-    
-    // Find or create corresponding tab
-    let tab = null;
-    document.querySelectorAll('.tab span').forEach(span => {
-      if (span.textContent === fileName) {
-        tab = span.parentElement;
-      }
-    });
-    
-    if (!tab) {
-      // Create new tab if it doesn't exist
-      const tabsContainer = document.querySelector('.editor-tabs');
-      tab = document.createElement('div');
-      tab.className = 'tab';
-      tab.innerHTML = `<span>${fileName}</span><i class="fas fa-times"></i>`;
-      tabsContainer.appendChild(tab);
-      
-      // Add click event to new tab
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        if (files[fileName]) {
-          currentFile = fileName;
-          editor.setValue(files[fileName]);
-        }
-      });
-      
-      // Add close event to new tab
-      tab.querySelector('i').addEventListener('click', (e) => {
-        e.stopPropagation();
-        console.log('Close tab: ' + fileName);
-      });
-    }
-    
-    // Activate tab
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    
-    // Set file content in editor
-    if (files[fileName]) {
-      currentFile = fileName;
-      editor.setValue(files[fileName]);
-      
-      // Set language based on extension
-      const extension = fileName.split('.').pop();
-      let language = 'text';
-      
-      switch(extension) {
-        case 'js':
-          language = 'javascript';
-          break;
-        case 'html':
-          language = 'html';
-          break;
-        case 'css':
-          language = 'css';
-          break;
-        case 'json':
-          language = 'json';
-          break;
-      }
-      
-      monaco.editor.setModelLanguage(editor.getModel(), language);
-      document.querySelector('.language').textContent = language.charAt(0).toUpperCase() + language.slice(1);
-    }
-  });
-});
+// Set editor language based on file extension
+function setEditorLanguage(fileName) {
+  const extension = fileName.split('.').pop().toLowerCase();
+  let language = 'text';
+  
+  switch(extension) {
+    case 'js':
+      language = 'javascript';
+      break;
+    case 'html':
+      language = 'html';
+      break;
+    case 'css':
+      language = 'css';
+      break;
+    case 'json':
+      language = 'json';
+      break;
+    case 'md':
+      language = 'markdown';
+      break;
+    case 'py':
+      language = 'python';
+      break;
+    case 'jsx':
+      language = 'javascript';
+      break;
+    case 'ts':
+      language = 'typescript';
+      break;
+    case 'tsx':
+      language = 'typescript';
+      break;
+  }
+  
+  monaco.editor.setModelLanguage(editor.getModel(), language);
+  document.querySelector('.language').textContent = language.charAt(0).toUpperCase() + language.slice(1);
+}
 
 // Update cursor position in status bar
 editor.onDidChangeCursorPosition(e => {
