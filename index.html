@@ -5,6 +5,35 @@
   <title>VS Code-like Editor</title>
   <link rel="stylesheet" href="styles/main.css">
   <link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+  
+  <!-- Make sure Monaco is loaded before other scripts -->
+  <script>
+    // Create a global placeholder for the Monaco loader
+    window.monacoLoaderReady = false;
+    window.monacoReadyCallbacks = [];
+    
+    // Function to be called when Monaco is ready
+    function onMonacoReady(callback) {
+      if (window.monacoLoaderReady) {
+        callback();
+      } else {
+        window.monacoReadyCallbacks.push(callback);
+      }
+    }
+  </script>
+  
+  <!-- Monaco Loader -->
+  <script>
+    // This would depend on how you've included Monaco in your project
+    // This is a simplified version that assumes Monaco is available globally
+    document.addEventListener('DOMContentLoaded', function() {
+      // Simulating Monaco loading
+      setTimeout(() => {
+        window.monacoLoaderReady = true;
+        window.monacoReadyCallbacks.forEach(callback => callback());
+      }, 100);
+    });
+  </script>
 </head>
 <body>
   <div class="app-container">
@@ -33,26 +62,8 @@
         <h3>EXPLORER</h3>
       </div>
       <div class="file-explorer">
-        <div class="folder-group">
-          <div class="folder-header">
-            <i class="fas fa-chevron-down"></i>
-            <span>PROJECT NAME</span>
-          </div>
-          <div class="file-list">
-            <div class="file active">
-              <i class="fas fa-file-code"></i>
-              <span>index.html</span>
-            </div>
-            <div class="file">
-              <i class="fas fa-file-code"></i>
-              <span>renderer.js</span>
-            </div>
-            <div class="file">
-              <i class="fas fa-file-code"></i>
-              <span>main.js</span>
-            </div>
-          </div>
-        </div>
+        <!-- Will be populated dynamically -->
+        <div class="loading">Loading files...</div>
       </div>
     </div>
 
@@ -88,10 +99,44 @@
     </div>
   </div>
   
+  <!-- Load scripts in the correct order -->
   <script src="loader.js"></script>
+  <!-- Components -->
+  <script src="components/directory-reader.js"></script>
   <script src="components/sidebar.js"></script>
   <script src="components/tabs.js"></script>
   <script src="components/statusbar.js"></script>
+  <!-- Main renderer script should be loaded last -->
   <script src="renderer.js"></script>
+  
+  <!-- Debug panel for development -->
+  <div id="debug-panel" style="display: none; position: fixed; bottom: 0; right: 0; background: #333; color: #fff; padding: 10px; max-height: 200px; overflow: auto; z-index: 1000;">
+    <h4>Debug Console</h4>
+    <pre id="debug-output"></pre>
+    <button onclick="document.getElementById('debug-output').innerHTML = ''">Clear</button>
+    <button onclick="document.getElementById('debug-panel').style.display = 'none'">Close</button>
+  </div>
+  <button onclick="document.getElementById('debug-panel').style.display = 'block'" style="position: fixed; bottom: 0; right: 0; z-index: 999;">Debug</button>
+  
+  <script>
+    // Override console.log to show in debug panel
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    
+    console.log = function() {
+      const args = Array.from(arguments);
+      document.getElementById('debug-output').innerHTML += args.join(' ') + '\n';
+      originalConsoleLog.apply(console, args);
+    };
+    
+    console.error = function() {
+      const args = Array.from(arguments);
+      document.getElementById('debug-output').innerHTML += '<span style="color: red;">' + args.join(' ') + '</span>\n';
+      originalConsoleError.apply(console, args);
+    };
+    
+    // Initialize debug panel
+    console.log('Debug panel initialized');
+  </script>
 </body>
 </html>

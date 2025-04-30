@@ -35,6 +35,7 @@ app.on('window-all-closed', function () {
 ipcMain.on('request-directory-structure', (event) => {
   // Get the current app directory
   const appDirectory = path.dirname(app.getAppPath());
+  console.log('Reading directory structure from:', appDirectory);
   
   // Read directory structure using our module
   const directoryReader = require('./components/directory-reader');
@@ -46,8 +47,11 @@ ipcMain.on('request-directory-structure', (event) => {
 
 // Handle file open request
 ipcMain.on('open-file', (event, fileInfo) => {
+  console.log(`Main process received request to open: ${fileInfo.path}`);
+  
   try {
     const content = fs.readFileSync(fileInfo.path, 'utf8');
+    console.log(`Successfully read file: ${fileInfo.name}`);
     
     // Send file content back to renderer
     event.sender.send('file-content', {
@@ -63,4 +67,4 @@ ipcMain.on('open-file', (event, fileInfo) => {
       error: error.message
     });
   }
-})
+});
