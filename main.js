@@ -68,3 +68,37 @@ ipcMain.on('open-file', (event, fileInfo) => {
     });
   }
 });
+
+// Handle file save request
+ipcMain.on('save-file', (event, fileData) => {
+  console.log(`Main process received request to save: ${fileData.path}`);
+  
+  try {
+    fs.writeFileSync(fileData.path, fileData.content, 'utf8');
+    console.log(`Successfully saved file: ${fileData.path}`);
+    
+    // Send confirmation back to renderer
+    event.sender.send('file-saved', {
+      name: fileData.name,
+      path: fileData.path,
+      success: true
+    });
+  } catch (error) {
+    console.error('Error saving file:', error);
+    event.sender.send('file-saved', {
+      name: fileData.name,
+      path: fileData.path,
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/* Prompt user before closing with unsaved changes */
+// window.addEventListener('beforeunload', (e) => {
+//   if (isDirty) {
+//     e.preventDefault();
+//     e.returnValue = '';
+//     return '';
+//   }
+// });

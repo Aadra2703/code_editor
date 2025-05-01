@@ -28,7 +28,10 @@ const files = {
   'main.js': 'const { app, BrowserWindow } = require(\'electron\')\n\nfunction createWindow() {\n  const win = new BrowserWindow({\n    width: 1200,\n    height: 800\n  })\n\n  win.loadFile(\'index.html\')\n}\n\napp.whenReady().then(createWindow)'
 };
 
+// Track file paths (for saving back to disk)
+const filePaths = {};
 let currentFile = 'renderer.js';
+let isDirty = false; // Track if current file has unsaved changes
 
 // Initialize the editor when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
@@ -42,8 +45,152 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add event listeners to existing tabs
   setupTabEventListeners();
   
+  // Set up keyboard shortcuts
+  setupKeyboardShortcuts();
+  
+  // Add save button to status bar
+  addSaveButton();
+  
   console.log('Editor initialization registered');
 });
+
+// Add save button to status bar
+function addSaveButton() {
+  const statusRight = document.querySelector('.status-right');
+  
+  if (statusRight) {
+    const saveButton = document.createElement('span');
+    saveButton.className = 'save-button';
+    saveButton.innerHTML = '<i class="fas fa-save"></i> Save';
+    saveButton.title = 'Save file (Ctrl+S)';
+    saveButton.style.cursor = 'pointer';
+    saveButton.style.marginRight = '10px';
+    
+    // Add click handler
+    saveButton.addEventListener('click', () => {
+      saveCurrentFile();
+    });
+    
+    // Insert at the beginning of status-right
+    statusRight.insertBefore(saveButton, statusRight.firstChild);
+  }
+}
+
+// Setup keyboard shortcuts
+function setupKeyboardShortcuts() {
+  document.addEventListener('keydown', (event) => {
+    // Ctrl+S (or Cmd+S on Mac) to save
+    if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+      event.preventDefault(); // Prevent browser save dialog
+      saveCurrentFile();
+    }
+  });
+}
+
+// Save the current file
+function saveCurrentFile() {
+  if (!currentFile || !editor) {
+    console.warn('No file to save or editor not initialized');
+    return;
+  }
+  
+  // Get current content from editor
+  const content = editor.getValue();
+  
+  // Update our local cache
+  files[currentFile] = content;
+  
+  // Check if we have a path for this file (if it was opened from disk)
+  if (filePaths[currentFile]) {
+    console.log(`Saving ${currentFile} to ${filePaths[currentFile]}`);
+    
+    // If we have IPC available, save through main process
+    if (ipcRenderer) {
+      showSavingIndicator();
+      
+      ipcRenderer.send('save-file', {
+        name: currentFile,
+        path: filePaths[currentFile],
+        content: content
+      });
+    } else {
+      console.warn('IPC not available, cannot save file to disk');
+      // For browser testing, simulate success
+      showSavedIndicator();
+      updateDirtyState(false);
+    }
+  } else {
+    console.warn(`No file path associated with ${currentFile}, cannot save to disk`);
+    // In a real app, you'd show a "Save As" dialog here
+    alert('This file was not opened from disk. In a real app, a "Save As" dialog would appear here.');
+  }
+}
+
+// Show saving indicator in status bar
+function showSavingIndicator() {
+  const statusLeft = document.querySelector('.status-left');
+  
+  if (statusLeft) {
+    // Create or update saving indicator
+    let savingIndicator = document.querySelector('.saving-indicator');
+    
+    if (!savingIndicator) {
+      savingIndicator = document.createElement('span');
+      savingIndicator.className = 'saving-indicator';
+      statusLeft.appendChild(savingIndicator);
+    }
+    
+    savingIndicator.textContent = 'Saving...';
+    savingIndicator.style.color = '#ffa500';
+  }
+}
+
+// Show saved indicator in status bar
+function showSavedIndicator() {
+  const statusLeft = document.querySelector('.status-left');
+  
+  if (statusLeft) {
+    let savingIndicator = document.querySelector('.saving-indicator');
+    
+    if (!savingIndicator) {
+      savingIndicator = document.createElement('span');
+      savingIndicator.className = 'saving-indicator';
+      statusLeft.appendChild(savingIndicator);
+    }
+    
+    savingIndicator.textContent = 'Saved';
+    savingIndicator.style.color = '#4CAF50';
+    
+    // Clear the indicator after a delay
+    setTimeout(() => {
+      savingIndicator.textContent = '';
+    }, 2000);
+  }
+}
+
+// Update tab dirty state
+function updateDirtyState(dirty) {
+  isDirty = dirty;
+  
+  // Find the tab for the current file
+  document.querySelectorAll('.tab span').forEach(span => {
+    if (span.textContent === currentFile) {
+      const tab = span.parentElement;
+      
+      if (dirty) {
+        if (!tab.classList.contains('dirty')) {
+          tab.classList.add('dirty');
+          // Add a visual indicator (bullet) before the name
+          span.textContent = '• ' + span.textContent.replace(/^• /, '');
+        }
+      } else {
+        tab.classList.remove('dirty');
+        // Remove the bullet
+        span.textContent = span.textContent.replace(/^• /, '');
+      }
+    }
+  });
+}
 
 // Initialize Monaco Editor
 function initializeEditor() {
@@ -91,7 +238,10 @@ function initializeEditor() {
             });
           },
           onDidChangeModelContent: (callback) => {
-            textarea.addEventListener('input', callback);
+            textarea.addEventListener('input', () => {
+              updateDirtyState(true);
+              callback();
+            });
           },
           getModel: () => ({ 
             getValue: () => textarea.value, 
@@ -163,9 +313,10 @@ function setupEditorEventListeners() {
     document.querySelector('.line-col').textContent = `Ln ${position.lineNumber}, Col ${position.column}`;
   });
   
-  // Save changes to our file cache when content changes
+  // Mark file as dirty when content changes
   editor.onDidChangeModelContent(() => {
     files[currentFile] = editor.getValue();
+    updateDirtyState(true);
   });
   
   console.log('Editor event listeners set up');
@@ -206,8 +357,9 @@ function setupIPCEventListeners() {
     const { name, path: filePath, content } = fileData;
     console.log(`Received file content for: ${name} (${content.length} bytes)`);
     
-    // Add file to our cache
+    // Add file to our cache and store its path
     files[name] = content;
+    filePaths[name] = filePath;
     
     // Create or update tab
     createOrUpdateTab(name);
@@ -217,6 +369,7 @@ function setupIPCEventListeners() {
     if (editor) {
       editor.setValue(content);
       setEditorLanguage(name);
+      updateDirtyState(false); // Reset dirty state as we just opened the file
     } else {
       console.error('Editor not initialized when trying to set content');
     }
@@ -230,6 +383,32 @@ function setupIPCEventListeners() {
     alert(`Failed to load file: ${name}\nError: ${error}`);
   });
   
+  // Handle file save response
+  ipcRenderer.on('file-saved', (event, saveData) => {
+    const { name, path: filePath, success, error } = saveData;
+    
+    if (success) {
+      console.log(`File saved successfully: ${name}`);
+      showSavedIndicator();
+      updateDirtyState(false);
+    } else {
+      console.error(`Error saving file ${name}: ${error}`);
+      alert(`Failed to save file: ${name}\nError: ${error}`);
+      
+      // Update save indicator to show error
+      const savingIndicator = document.querySelector('.saving-indicator');
+      if (savingIndicator) {
+        savingIndicator.textContent = 'Save failed';
+        savingIndicator.style.color = '#f44336';
+        
+        // Clear the indicator after a delay
+        setTimeout(() => {
+          savingIndicator.textContent = '';
+        }, 3000);
+      }
+    }
+  });
+  
   console.log('IPC event listeners set up');
 }
 
@@ -238,7 +417,7 @@ function createOrUpdateTab(fileName) {
   // Find an existing tab
   let tab = null;
   document.querySelectorAll('.tab span').forEach(span => {
-    if (span.textContent === fileName) {
+    if (span.textContent === fileName || span.textContent === '• ' + fileName) {
       tab = span.parentElement;
     }
   });
@@ -254,6 +433,14 @@ function createOrUpdateTab(fileName) {
     
     // Add click event to the new tab
     tab.addEventListener('click', () => {
+      // Check if current file has unsaved changes and prompt user
+      if (currentFile && isDirty && files[currentFile]) {
+        const save = confirm(`Save changes to ${currentFile}?`);
+        if (save) {
+          saveCurrentFile();
+        }
+      }
+      
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       if (files[fileName]) {
@@ -261,6 +448,7 @@ function createOrUpdateTab(fileName) {
         if (editor) {
           editor.setValue(files[fileName]);
           setEditorLanguage(fileName);
+          updateDirtyState(false); // Reset dirty state as we just switched to this file
         }
       }
     });
@@ -268,6 +456,15 @@ function createOrUpdateTab(fileName) {
     // Add close event to the new tab
     tab.querySelector('i').addEventListener('click', (e) => {
       e.stopPropagation();
+      
+      // Check if this tab has unsaved changes
+      if (fileName === currentFile && isDirty) {
+        const save = confirm(`Save changes to ${fileName} before closing?`);
+        if (save) {
+          saveCurrentFile();
+        }
+      }
+      
       console.log('Close tab: ' + fileName);
       tab.remove();
       
@@ -290,8 +487,16 @@ function createOrUpdateTab(fileName) {
 function setupTabEventListeners() {
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
+      // Check if current file has unsaved changes and prompt user
+      if (currentFile && isDirty && files[currentFile]) {
+        const save = confirm(`Save changes to ${currentFile}?`);
+        if (save) {
+          saveCurrentFile();
+        }
+      }
+      
       // Get the file name from tab
-      const fileName = tab.querySelector('span').textContent;
+      const fileName = tab.querySelector('span').textContent.replace(/^• /, '');
       
       // Set it as active tab
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -302,6 +507,7 @@ function setupTabEventListeners() {
         currentFile = fileName;
         editor.setValue(files[fileName]);
         setEditorLanguage(fileName);
+        updateDirtyState(false);
       }
     });
     
@@ -309,8 +515,19 @@ function setupTabEventListeners() {
     tab.querySelector('i').addEventListener('click', (e) => {
       e.stopPropagation(); // Prevent tab selection when closing
       
+      // Get the file name from tab
+      const fileName = tab.querySelector('span').textContent.replace(/^• /, '');
+      
+      // Check if this tab has unsaved changes
+      if (fileName === currentFile && isDirty) {
+        const save = confirm(`Save changes to ${fileName} before closing?`);
+        if (save) {
+          saveCurrentFile();
+        }
+      }
+      
       // In a real app, you'd handle saving changes here
-      console.log('Close tab: ' + tab.querySelector('span').textContent);
+      console.log('Close tab: ' + fileName);
       tab.remove();
       
       // If this was the active tab, activate another one if available
@@ -395,6 +612,7 @@ function testOpenFile(filename) {
     if (editor) {
       editor.setValue(files[filename]);
       setEditorLanguage(filename);
+      updateDirtyState(false);
       return true;
     }
   }
@@ -404,3 +622,4 @@ function testOpenFile(filename) {
 
 // Make it globally available for testing
 window.testOpenFile = testOpenFile;
+window.saveCurrentFile = saveCurrentFile;
