@@ -191,3 +191,38 @@
   .git-info, .line-col, .encoding, .language {
     padding: 0 8px;
   }
+
+  /* Add these styles to your main.css file */
+
+/* Style for tabs with unsaved changes */
+.tab.dirty span {
+  font-style: italic;
+}
+
+/* Save button styling */
+.save-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background-color: #2d2d2d;
+  transition: background-color 0.2s;
+}
+
+.save-button:hover {
+  background-color: #3a3a3a;
+}
+
+.save-button i {
+  font-size: 12px;
+}
+
+/* Saving indicator */
+.saving-indicator {
+  margin-left: 10px;
+  font-size: 12px;
+  font-style: italic;
+  transition: color 0.3s;
+}
+
