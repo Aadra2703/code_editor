@@ -191,3 +191,208 @@
   .git-info, .line-col, .encoding, .language {
     padding: 0 8px;
   }
+
+  /* Search styles to be added to main.css */
+
+/* Search panel */
+.search-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.search-input-container {
+  display: flex;
+  padding: 8px;
+  background-color: #252526;
+}
+
+.search-input {
+  flex: 1;
+  height: 24px;
+  background-color: #3c3c3c;
+  border: 1px solid #3c3c3c;
+  color: #cccccc;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.search-button {
+  height: 24px;
+  width: 24px;
+  background-color: #0e639c;
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.search-options {
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  padding: 4px 8px;
+  color: #cccccc;
+  background-color: #252526;
+}
+
+.search-options label {
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.search-options input[type="checkbox"] {
+  margin-right: 4px;
+}
+
+.search-results {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #252526;
+}
+
+.search-results-header {
+  font-size: 11px;
+  font-weight: bold;
+  padding: 4px 8px;
+  background-color: #333333;
+  color: #cccccc;
+}
+
+.search-results-list {
+  font-size: 12px;
+  color: #cccccc;
+}
+
+.search-summary {
+  padding: 4px 8px;
+  font-style: italic;
+  color: #999999;
+  font-size: 11px;
+}
+
+.search-result-file {
+  margin-bottom: 8px;
+}
+
+.search-result-file-header {
+  display: flex;
+  align-items: center;
+  padding: 2px 8px;
+  background-color: #2d2d2d;
+  cursor: pointer;
+}
+
+.search-result-file-header i {
+  margin-right: 6px;
+  color: #75beff;
+}
+
+.match-count {
+  margin-left: 8px;
+  color: #999999;
+  font-size: 10px;
+}
+
+.search-result-lines {
+  background-color: #1e1e1e;
+}
+
+.search-result-line {
+  padding: 1px 8px 1px 16px;
+  cursor: pointer;
+  display: flex;
+  font-family: Consolas, 'Courier New', monospace;
+  white-space: nowrap;
+}
+
+.search-result-line:hover {
+  background-color: #2a2d2e;
+}
+
+.line-number {
+  min-width: 3em;
+  color: #858585;
+  text-align: right;
+  padding-right: 8px;
+}
+
+.line-content {
+  color: #cccccc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.no-results, .error-result {
+  padding: 8px;
+  color: #cccccc;
+  font-style: italic;
+}
+
+.error-result {
+  color: #f48771;
+}
+
+/* Editor search box */
+.editor-search-box {
+  position: absolute;
+  top: 44px; /* Below tabs */
+  right: 20px;
+  background-color: #252526;
+  border: 1px solid #454545;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.editor-search-input {
+  height: 24px;
+  background-color: #3c3c3c;
+  border: 1px solid #3c3c3c;
+  color: #cccccc;
+  padding: 4px 8px;
+  font-size: 12px;
+  width: 200px;
+}
+
+.editor-search-count {
+  margin: 0 8px;
+  font-size: 12px;
+  color: #cccccc;
+  min-width: 60px;
+  text-align: center;
+}
+
+.editor-search-actions {
+  display: flex;
+  align-items: center;
+}
+
+.editor-search-actions button {
+  background: none;
+  border: none;
+  color: #cccccc;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+}
+
+.editor-search-actions button:hover {
+  background-color: #3c3c3c;
+}
+
+/* Highlight for search matches in Monaco editor */
+.editor-search-highlight {
+  background-color: rgba(255, 255, 0, 0.4);
+}
