@@ -84,6 +84,15 @@
       <!-- Editor Container -->
       <div id="editor-container"></div>
       
+      <!-- Terminal Panel -->
+      <div class="terminal-panel">
+        <div class="terminal-header">
+          <span>Terminal</span>
+          <button class="terminal-close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="terminal-content"></div>
+      </div>
+      
       <!-- Status Bar -->
       <div class="status-bar">
         <div class="status-left">
@@ -91,6 +100,10 @@
           <span class="status-errors"><i class="fas fa-exclamation-circle"></i> 0 <i class="fas fa-warning"></i> 0</span>
         </div>
         <div class="status-right">
+          <button class="run-code-button">
+            <i class="fas fa-play"></i>
+            Run
+          </button>
           <span class="line-col">Ln 1, Col 1</span>
           <span class="encoding">UTF-8</span>
           <span class="language">JavaScript</span>
@@ -140,4 +153,4 @@
     console.log('Debug panel initialized');
   </script>
 </body>
-</html>
+</html> 

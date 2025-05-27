@@ -51,6 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add save button to status bar
   addSaveButton();
   
+  // Initialize code execution
+  initializeCodeExecution();
+  
   console.log('Editor initialization registered');
 });
 
@@ -623,3 +626,57 @@ function testOpenFile(filename) {
 // Make it globally available for testing
 window.testOpenFile = testOpenFile;
 window.saveCurrentFile = saveCurrentFile;
+
+// Initialize code execution functionality
+function initializeCodeExecution() {
+  const runButton = document.querySelector('.run-code-button');
+  const terminalPanel = document.querySelector('.terminal-panel');
+  const terminalContent = document.querySelector('.terminal-content');
+  const terminalClose = document.querySelector('.terminal-close');
+  
+  if (!runButton || !terminalPanel || !terminalContent || !terminalClose) {
+    console.error('Required elements for code execution not found');
+    return;
+  }
+  
+  // Handle run button click
+  runButton.addEventListener('click', () => {
+    if (!currentFile || !editor) {
+      alert('No file is currently open');
+      return;
+    }
+    
+    // Show terminal panel
+    terminalPanel.classList.add('show');
+    terminalContent.innerHTML = '';
+    
+    // Get current file content
+    const code = editor.getValue();
+    
+    // Send code for execution
+    if (ipcRenderer) {
+      ipcRenderer.send('execute-code', {
+        filePath: filePaths[currentFile],
+        code: code
+      });
+    }
+  });
+  
+  // Handle terminal close button
+  terminalClose.addEventListener('click', () => {
+    terminalPanel.classList.remove('show');
+  });
+  
+  // Handle execution output
+  if (ipcRenderer) {
+    ipcRenderer.on('execution-output', (event, { type, output }) => {
+      const outputElement = document.createElement('div');
+      outputElement.className = `output-${type}`;
+      outputElement.textContent = output;
+      terminalContent.appendChild(outputElement);
+      
+      // Auto-scroll to bottom
+      terminalContent.scrollTop = terminalContent.scrollHeight;
+    });
+  }
+}

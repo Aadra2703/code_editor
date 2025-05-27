@@ -2,6 +2,104 @@
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Sidebar script loaded, initializing file explorer...');
   
+  // Add new file button to panel header
+  const panelHeader = document.querySelector('.panel-header');
+  if (panelHeader) {
+    const newFileButton = document.createElement('button');
+    newFileButton.className = 'new-file-button';
+    newFileButton.innerHTML = '<i class="fas fa-plus"></i>';
+    newFileButton.title = 'New File';
+    panelHeader.appendChild(newFileButton);
+    
+    // Handle new file creation
+    newFileButton.addEventListener('click', createNewFile);
+  }
+
+  // Function to create new file
+  async function createNewFile() {
+    try {
+      const fileName = await promptFileName();
+      if (!fileName) return; // User cancelled
+
+      if (window.require) {
+        const electronRequire = window.require;
+        const { ipcRenderer } = electronRequire('electron');
+        
+        ipcRenderer.send('create-new-file', { fileName });
+        
+        // Listen for file creation response
+        ipcRenderer.once('file-created', (event, response) => {
+          if (response.success) {
+            // Refresh file explorer
+            initializeFileExplorer();
+            // Open the new file
+            handleFileClick({
+              querySelector: () => ({ textContent: fileName }),
+              getAttribute: () => response.filePath,
+              classList: { add: () => {} }
+            });
+          } else {
+            alert(`Error creating file: ${response.error}`);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error creating new file:', error);
+      alert('Error creating new file');
+    }
+  }
+
+  // Function to prompt for file name
+  function promptFileName() {
+    return new Promise((resolve) => {
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      modal.innerHTML = `
+        <div class="modal-content">
+          <h3>Create New File</h3>
+          <input type="text" id="fileNameInput" placeholder="Enter file name" />
+          <div class="modal-buttons">
+            <button id="createBtn">Create</button>
+            <button id="cancelBtn">Cancel</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      const input = modal.querySelector('#fileNameInput');
+      const createBtn = modal.querySelector('#createBtn');
+      const cancelBtn = modal.querySelector('#cancelBtn');
+
+      input.focus();
+
+      function cleanup() {
+        document.body.removeChild(modal);
+      }
+
+      createBtn.addEventListener('click', () => {
+        const fileName = input.value.trim();
+        cleanup();
+        resolve(fileName);
+      });
+
+      cancelBtn.addEventListener('click', () => {
+        cleanup();
+        resolve(null);
+      });
+
+      input.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') {
+          const fileName = input.value.trim();
+          cleanup();
+          resolve(fileName);
+        } else if (e.key === 'Escape') {
+          cleanup();
+          resolve(null);
+        }
+      });
+    });
+  }
+
   // Initialize file explorer with directory structure
   initializeFileExplorer();
   
