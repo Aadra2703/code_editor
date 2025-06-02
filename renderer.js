@@ -581,6 +581,24 @@ function setEditorLanguage(fileName) {
     case 'tsx':
       language = 'typescript';
       break;
+    case 'c':
+      language = 'c';
+      break;
+    case 'cpp':
+    case 'cc':
+    case 'cxx':
+      language = 'cpp';
+      break;
+    case 'java':
+      language = 'java';
+      break;
+    case 'h':
+      language = 'c';
+      break;
+    case 'hpp':
+    case 'hxx':
+      language = 'cpp';
+      break;
   }
   
   // Update status bar
@@ -680,3 +698,4 @@ function initializeCodeExecution() {
     });
   }
 }
+

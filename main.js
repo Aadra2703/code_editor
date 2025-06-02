@@ -130,19 +130,80 @@ ipcMain.on('create-new-file', (event, { fileName }) => {
 ipcMain.on('execute-code', (event, { filePath, code }) => {
   try {
     const extension = path.extname(filePath).toLowerCase();
+    const dir = path.dirname(filePath);
+    const baseName = path.basename(filePath, extension);
     let process;
     
     switch (extension) {
       case '.js':
         process = spawn('node', [filePath]);
+        handleProcess(process, event);
         break;
+        
       case '.py':
         process = spawn('python', [filePath]);
+        handleProcess(process, event);
         break;
+
+      case '.c':
+        const cOutputPath = path.join(dir, `${baseName}_out`);
+        const compileC = spawn('gcc', [filePath, '-o', cOutputPath]);
+        
+        compileC.stderr.on('data', (data) => {
+          event.sender.send('execution-output', {
+            type: 'error',
+            output: `Compilation error: ${data.toString()}`
+          });
+        });
+        
+        compileC.on('close', (code) => {
+          if (code === 0) {
+            process = spawn(cOutputPath);
+            handleProcess(process, event);
+          } else {
+            event.sender.send('execution-output', {
+              type: 'error',
+              output: 'C compilation failed'
+            });
+          }
+        });
+        break;
+
+      case '.cpp':
+        const cppOutputPath = path.join(dir, `${baseName}_out`);
+        const compileCpp = spawn('g++', [filePath, '-o', cppOutputPath]);
+        
+        compileCpp.stderr.on('data', (data) => {
+          event.sender.send('execution-output', {
+            type: 'error',
+            output: `Compilation error: ${data.toString()}`
+          });
+        });
+        
+        compileCpp.on('close', (code) => {
+          if (code === 0) {
+            process = spawn(cppOutputPath);
+            handleProcess(process, event);
+          } else {
+            event.sender.send('execution-output', {
+              type: 'error',
+              output: 'C++ compilation failed'
+            });
+          }
+        });
+        break;
+        
       case '.java':
-        // First compile, then run
         const className = path.basename(filePath, '.java');
         const compileProcess = spawn('javac', [filePath]);
+        
+        compileProcess.stderr.on('data', (data) => {
+          event.sender.send('execution-output', {
+            type: 'error',
+            output: `Compilation error: ${data.toString()}`
+          });
+        });
+        
         compileProcess.on('close', (code) => {
           if (code === 0) {
             process = spawn('java', ['-cp', path.dirname(filePath), className]);
@@ -150,11 +211,12 @@ ipcMain.on('execute-code', (event, { filePath, code }) => {
           } else {
             event.sender.send('execution-output', {
               type: 'error',
-              output: 'Compilation failed'
+              output: 'Java compilation failed'
             });
           }
         });
-        return;
+        break;
+        
       default:
         event.sender.send('execution-output', {
           type: 'error',
@@ -162,8 +224,6 @@ ipcMain.on('execute-code', (event, { filePath, code }) => {
         });
         return;
     }
-    
-    handleProcess(process, event);
     
   } catch (error) {
     console.error('Error executing code:', error);
